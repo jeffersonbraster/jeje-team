@@ -371,21 +371,18 @@ export const AttachmentRemove = ({
 
 export type AttachmentHoverCardProps = ComponentProps<typeof HoverCard>;
 
-export const AttachmentHoverCard = ({
-  openDelay = 0,
-  closeDelay = 0,
-  ...props
-}: AttachmentHoverCardProps) => (
-  <HoverCard closeDelay={closeDelay} openDelay={openDelay} {...props} />
+export const AttachmentHoverCard = (props: AttachmentHoverCardProps) => (
+  <HoverCard {...props} />
 );
 
 export type AttachmentHoverCardTriggerProps = ComponentProps<
   typeof HoverCardTrigger
 >;
 
+// Base UI sets hover delays on the trigger, not the root.
 export const AttachmentHoverCardTrigger = (
   props: AttachmentHoverCardTriggerProps
-) => <HoverCardTrigger {...props} />;
+) => <HoverCardTrigger closeDelay={0} delay={0} {...props} />;
 
 export type AttachmentHoverCardContentProps = ComponentProps<
   typeof HoverCardContent

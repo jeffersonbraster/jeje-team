@@ -420,20 +420,21 @@ export const PromptInputActionAddAttachments = ({
 }: PromptInputActionAddAttachmentsProps) => {
   const attachments = usePromptInputAttachments();
 
-  const handleSelect = useCallback(
-    (e: Event) => {
-      e.preventDefault();
-      attachments.openFileDialog();
-    },
-    [attachments]
-  );
+  // Base UI menu items fire onClick when chosen (Radix used onSelect).
+  const handleClick = useCallback(() => {
+    attachments.openFileDialog();
+  }, [attachments]);
 
   return (
-    <DropdownMenuItem {...props} onSelect={handleSelect}>
+    <DropdownMenuItem {...props} onClick={handleClick}>
       <ImageIcon className="mr-2 size-4" /> {label}
     </DropdownMenuItem>
   );
 };
+
+type MenuItemClickEvent = Parameters<
+  NonNullable<ComponentProps<typeof DropdownMenuItem>["onClick"]>
+>[0];
 
 export type PromptInputActionAddScreenshotProps = ComponentProps<
   typeof DropdownMenuItem
@@ -443,14 +444,15 @@ export type PromptInputActionAddScreenshotProps = ComponentProps<
 
 export const PromptInputActionAddScreenshot = ({
   label = "Take screenshot",
-  onSelect,
+  onClick,
   ...props
 }: PromptInputActionAddScreenshotProps) => {
   const attachments = usePromptInputAttachments();
 
-  const handleSelect = useCallback(
-    async (event: Event) => {
-      onSelect?.(event);
+  // Base UI menu items fire onClick when chosen (Radix used onSelect).
+  const handleClick = useCallback(
+    async (event: MenuItemClickEvent) => {
+      onClick?.(event);
       if (event.defaultPrevented) {
         return;
       }
@@ -470,11 +472,11 @@ export const PromptInputActionAddScreenshot = ({
         throw error;
       }
     },
-    [onSelect, attachments]
+    [onClick, attachments]
   );
 
   return (
-    <DropdownMenuItem {...props} onSelect={handleSelect}>
+    <DropdownMenuItem {...props} onClick={handleClick}>
       <Monitor className="mr-2 size-4" />
       {label}
     </DropdownMenuItem>
@@ -1232,7 +1234,7 @@ export const PromptInputSubmit = ({
   }
 
   const handleClick = useCallback(
-    (e: React.MouseEvent<HTMLButtonElement>) => {
+    (e: Parameters<NonNullable<PromptInputSubmitProps["onClick"]>>[0]) => {
       if (isGenerating && onStop) {
         e.preventDefault();
         onStop();
@@ -1313,21 +1315,18 @@ export const PromptInputSelectValue = ({
 
 export type PromptInputHoverCardProps = ComponentProps<typeof HoverCard>;
 
-export const PromptInputHoverCard = ({
-  openDelay = 0,
-  closeDelay = 0,
-  ...props
-}: PromptInputHoverCardProps) => (
-  <HoverCard closeDelay={closeDelay} openDelay={openDelay} {...props} />
+export const PromptInputHoverCard = (props: PromptInputHoverCardProps) => (
+  <HoverCard {...props} />
 );
 
 export type PromptInputHoverCardTriggerProps = ComponentProps<
   typeof HoverCardTrigger
 >;
 
+// Base UI sets hover delays on the trigger, not the root.
 export const PromptInputHoverCardTrigger = (
   props: PromptInputHoverCardTriggerProps
-) => <HoverCardTrigger {...props} />;
+) => <HoverCardTrigger closeDelay={0} delay={0} {...props} />;
 
 export type PromptInputHoverCardContentProps = ComponentProps<
   typeof HoverCardContent

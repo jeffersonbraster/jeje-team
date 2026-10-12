@@ -56,10 +56,16 @@ export const useVoiceSelector = () => {
   return context;
 };
 
-export type VoiceSelectorProps = ComponentProps<typeof Dialog> & {
+// onOpenChange takes just the open state, like the context's setOpen, so it
+// fits useControllableState; Base UI's version also passes event details.
+export type VoiceSelectorProps = Omit<
+  ComponentProps<typeof Dialog>,
+  "onOpenChange"
+> & {
   value?: string;
   defaultValue?: string;
   onValueChange?: (value: string | undefined) => void;
+  onOpenChange?: (open: boolean) => void;
 };
 
 export const VoiceSelector = ({
