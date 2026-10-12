@@ -27,6 +27,7 @@ export async function getChat(chatId: string) {
               avatar: true,
               job: true,
               instructions: true,
+              sandboxId: true,
             },
           },
         },

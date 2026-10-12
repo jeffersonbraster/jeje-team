@@ -4,6 +4,7 @@ import { auth } from "@clerk/nextjs/server"
 import { and, eq, inArray } from "drizzle-orm"
 import { revalidatePath } from "next/cache"
 
+import { createSandbox, deleteSandbox } from "@/lib/daytona"
 import { db } from "@/lib/db"
 import {
   type BotInput,
@@ -19,23 +20,40 @@ export async function createBot(input: BotInput) {
 
   const data = botInsertSchema.parse(input)
 
+  // Every bot gets its own sandbox.
+  const sandboxId = await createSandbox()
+
   // Every bot starts with a direct chat. All three rows land together or
   // not at all.
-  const bot = await db.transaction(async (tx) => {
-    const [bot] = await tx
-      .insert(bots)
-      .values({ ...data, instructions: data.instructions || null, userId })
-      .returning()
+  let bot
+  try {
+    bot = await db.transaction(async (tx) => {
+      const [bot] = await tx
+        .insert(bots)
+        .values({
+          ...data,
+          instructions: data.instructions || null,
+          userId,
+          sandboxId,
+        })
+        .returning()
 
-    const [chat] = await tx
-      .insert(chats)
-      .values({ userId, kind: "direct" })
-      .returning()
+      const [chat] = await tx
+        .insert(chats)
+        .values({ userId, kind: "direct" })
+        .returning()
 
-    await tx.insert(chatMembers).values({ chatId: chat.id, botId: bot.id })
+      await tx.insert(chatMembers).values({ chatId: chat.id, botId: bot.id })
 
-    return bot
-  })
+      return bot
+    })
+  } catch (error) {
+    // The bot wasn't saved, so don't leave its sandbox behind.
+    await deleteSandbox(sandboxId).catch((cleanupError) =>
+      console.error("Failed to delete sandbox", sandboxId, cleanupError)
+    )
+    throw error
+  }
 
   // The sidebar's chat list is loaded in the dashboard layout, so refresh the
   // layout and every page under it, not just "/".
@@ -103,6 +121,14 @@ export async function deleteBot(botId: string) {
 
     return bot
   })
+
+  // After the rows are gone, so a failed delete never leaves a bot without
+  // its sandbox. A sandbox that can't be deleted is logged, not retried.
+  if (bot.sandboxId) {
+    await deleteSandbox(bot.sandboxId).catch((error) =>
+      console.error("Failed to delete sandbox", bot.sandboxId, error)
+    )
+  }
 
   revalidatePath("/(dashboard)", "layout")
 

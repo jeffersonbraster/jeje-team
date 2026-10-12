@@ -7,6 +7,7 @@ import {
   defaultStorage,
 } from "@trigger.dev/sdk/ai"
 
+import type { ChatUIMessage } from "@/lib/sandbox-tools"
 import { getChat } from "@/queries/chats"
 import type { chatAgent } from "@/trigger/chat"
 
@@ -43,5 +44,7 @@ export async function loadChatTranscript(params: {
   limit?: number
 }) {
   await assertOwnsChat(params.chatId)
-  return loadTranscript(params)
+  const transcript = await loadTranscript(params)
+  // Stored as plain JSON; these are the agent's messages, tool parts included.
+  return { ...transcript, messages: transcript.messages as ChatUIMessage[] }
 }

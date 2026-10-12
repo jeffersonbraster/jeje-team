@@ -3,10 +3,10 @@
 import * as React from "react"
 import { useChat } from "@ai-sdk/react"
 import {
-  type InferChatUIMessage,
   useLoadTranscript,
   useTriggerChatTransport,
 } from "@trigger.dev/sdk/chat/react"
+import { isStaticToolUIPart } from "ai"
 import { MessageSquareIcon } from "lucide-react"
 
 import {
@@ -20,6 +20,7 @@ import {
   ConversationEmptyState,
   ConversationScrollButton,
 } from "@/components/ai-elements/conversation"
+import { Image } from "@/components/ai-elements/image"
 import {
   Message,
   MessageContent,
@@ -31,9 +32,17 @@ import {
   PromptInputSubmit,
   PromptInputTextarea,
 } from "@/components/ai-elements/prompt-input"
+import {
+  Tool,
+  ToolContent,
+  ToolHeader,
+  ToolInput,
+  ToolOutput,
+} from "@/components/ai-elements/tool"
 import type { chatAgent } from "@/trigger/chat"
 
-type ChatUIMessage = InferChatUIMessage<typeof chatAgent>
+import type { ChatUIMessage } from "@/lib/sandbox-tools"
+type ChatMessagePart = ChatUIMessage["parts"][number]
 type ChatTransport = ReturnType<
   typeof useTriggerChatTransport<typeof chatAgent>
 >
@@ -100,13 +109,9 @@ function ChatView({
             messages.map((message) => (
               <Message from={message.role} key={message.id}>
                 <MessageContent>
-                  {message.parts.map((part, i) =>
-                    part.type === "text" ? (
-                      <MessageResponse key={`${message.id}-${i}`}>
-                        {part.text}
-                      </MessageResponse>
-                    ) : null
-                  )}
+                  {message.parts.map((part, i) => (
+                    <MessagePart key={`${message.id}-${i}`} part={part} />
+                  ))}
                 </MessageContent>
               </Message>
             ))
@@ -134,6 +139,43 @@ function ChatView({
       </div>
     </div>
   )
+}
+
+function MessagePart({ part }: Readonly<{ part: ChatMessagePart }>) {
+  if (part.type === "text") {
+    return <MessageResponse>{part.text}</MessageResponse>
+  }
+
+  // The bot's own look at the screen; never shown in the chat.
+  if (part.type === "tool-view_screen") return null
+
+  // A screenshot the bot chose to show the user.
+  if (part.type === "tool-show_screen" && part.state === "output-available") {
+    return (
+      <Image
+        base64={part.output.base64}
+        mediaType={part.output.mediaType}
+        // Required by the type but unused; the image renders from base64.
+        uint8Array={new Uint8Array()}
+        alt="Screenshot of the bot's sandbox desktop"
+      />
+    )
+  }
+
+  // Every other tool call, and show_screen while it runs or if it fails.
+  if (isStaticToolUIPart(part)) {
+    return (
+      <Tool>
+        <ToolHeader type={part.type} state={part.state} />
+        <ToolContent>
+          <ToolInput input={part.input} />
+          <ToolOutput output={part.output} errorText={part.errorText} />
+        </ToolContent>
+      </Tool>
+    )
+  }
+
+  return null
 }
 
 export { Chat }
