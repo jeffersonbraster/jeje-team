@@ -70,8 +70,20 @@ function emptyBot(): BotFormInput {
   return { name: "", avatar: nanoid(), job: "", instructions: "" }
 }
 
-function BotDialog({ trigger }: Readonly<{ trigger: React.ReactElement }>) {
-  const [open, setOpen] = React.useState(false)
+function BotDialog({
+  trigger,
+  open: openProp,
+  onOpenChange,
+}: Readonly<{
+  // Optional: leave it out and control the dialog with open/onOpenChange,
+  // e.g. when it is opened from a dropdown menu item.
+  trigger?: React.ReactElement
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
+}>) {
+  const [uncontrolledOpen, setUncontrolledOpen] = React.useState(false)
+  const open = openProp ?? uncontrolledOpen
+  const setOpen = onOpenChange ?? setUncontrolledOpen
 
   const form = useForm<BotFormInput, unknown, BotFormOutput>({
     resolver: zodResolver(insertBotSchema),
@@ -108,7 +120,7 @@ function BotDialog({ trigger }: Readonly<{ trigger: React.ReactElement }>) {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger render={trigger} />
+      {trigger && <DialogTrigger render={trigger} />}
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>New bot</DialogTitle>

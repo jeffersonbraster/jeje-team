@@ -56,7 +56,9 @@ export async function createBot(
     return { bot, chat }
   })
 
-  revalidatePath("/")
+  // The sidebar's chat list is loaded in the dashboard layout, so refresh the
+  // layout and every page under it, not just "/".
+  revalidatePath("/(dashboard)", "layout")
 
   return { success: true, bot, chat }
 }
