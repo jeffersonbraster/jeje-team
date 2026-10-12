@@ -15,6 +15,15 @@ const ANIMATION_SPEEDS = [
   "slowest",
 ] as const
 
+// A bot's face as an SVG data URI, for places that need a plain image URL.
+function chatAvatarUri(seed: string, animated = false) {
+  // The animation only adds CSS, so a seed keeps the same face either way.
+  return new Avatar(style, {
+    seed,
+    animationVariant: animated ? ANIMATION_SPEEDS : "none",
+  }).toDataUri()
+}
+
 function ChatAvatar({
   seed,
   animated = false,
@@ -24,11 +33,7 @@ function ChatAvatar({
   animated?: boolean
   className?: string
 }>) {
-  // The animation only adds CSS, so a seed keeps the same face either way.
-  const src = new Avatar(style, {
-    seed,
-    animationVariant: animated ? ANIMATION_SPEEDS : "none",
-  }).toDataUri()
+  const src = chatAvatarUri(seed, animated)
 
   return (
     <Image
@@ -42,4 +47,4 @@ function ChatAvatar({
   )
 }
 
-export { ChatAvatar }
+export { ChatAvatar, chatAvatarUri }

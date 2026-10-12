@@ -9,6 +9,7 @@ import {
 } from "drizzle-orm/pg-core"
 import { createInsertSchema } from "drizzle-zod"
 import { nanoid } from "nanoid"
+import type { z } from "zod"
 
 export const bots = pgTable(
   "bots",
@@ -39,9 +40,10 @@ export const bots = pgTable(
 export type Bot = typeof bots.$inferSelect
 export type NewBot = typeof bots.$inferInsert
 
-// The fields a user fills in. userId comes from the session, and id,
-// sandboxId and createdAt are set by the server or the database.
-export const insertBotSchema = createInsertSchema(bots, {
+// The fields a user fills in, for creating and editing a bot. userId comes
+// from the session, and id, sandboxId and createdAt are set by the server or
+// the database.
+export const botInsertSchema = createInsertSchema(bots, {
   name: (schema) =>
     schema
       .trim()
@@ -55,7 +57,9 @@ export const insertBotSchema = createInsertSchema(bots, {
       .max(100, "Keep the job under 100 characters."),
   instructions: (schema) =>
     schema.trim().max(2000, "Keep instructions under 2,000 characters."),
-}).pick({ name: true, avatar: true, job: true, instructions: true })
+}).omit({ id: true, userId: true, sandboxId: true, createdAt: true })
+
+export type BotInput = z.infer<typeof botInsertSchema>
 
 export const chatKind = pgEnum("chat_kind", ["direct", "group"])
 
