@@ -2,8 +2,18 @@
 
 import * as React from "react"
 import { useChat } from "@ai-sdk/react"
+import {
+  type InferChatUIMessage,
+  useLoadTranscript,
+  useTriggerChatTransport,
+} from "@trigger.dev/sdk/chat/react"
 import { MessageSquareIcon } from "lucide-react"
 
+import {
+  loadChatTranscript,
+  mintChatAccessToken,
+  startChatSession,
+} from "@/actions/chat"
 import {
   Conversation,
   ConversationContent,
@@ -21,11 +31,54 @@ import {
   PromptInputSubmit,
   PromptInputTextarea,
 } from "@/components/ai-elements/prompt-input"
+import type { chatAgent } from "@/trigger/chat"
 
-// Messages live only in memory for now; nothing is saved.
+type ChatUIMessage = InferChatUIMessage<typeof chatAgent>
+type ChatTransport = ReturnType<
+  typeof useTriggerChatTransport<typeof chatAgent>
+>
+
+// Loads the saved conversation first, then mounts the live chat, so the
+// initial messages and the transport's resume cursor match.
 function Chat({ chatId }: Readonly<{ chatId: string }>) {
+  const transport = useTriggerChatTransport<typeof chatAgent>({
+    task: "chat",
+    accessToken: ({ chatId }) => mintChatAccessToken(chatId),
+    startSession: ({ chatId, clientData }) =>
+      startChatSession({ chatId, clientData }),
+  })
+  const { messages, isLoading } = useLoadTranscript<ChatUIMessage>(
+    chatId,
+    loadChatTranscript,
+    { transport }
+  )
+
+  if (isLoading) return <div className="flex-1" />
+
+  return (
+    <ChatView
+      chatId={chatId}
+      transport={transport}
+      initialMessages={messages}
+    />
+  )
+}
+
+function ChatView({
+  chatId,
+  transport,
+  initialMessages,
+}: Readonly<{
+  chatId: string
+  transport: ChatTransport
+  initialMessages: ChatUIMessage[]
+}>) {
   const [input, setInput] = React.useState("")
-  const { messages, sendMessage, status, stop } = useChat({ id: chatId })
+  const { messages, sendMessage, status, stop } = useChat({
+    id: chatId,
+    transport,
+    messages: initialMessages,
+  })
 
   function handleSubmit(message: PromptInputMessage) {
     if (!message.text.trim()) return
