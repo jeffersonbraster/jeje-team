@@ -5,12 +5,19 @@ import { revalidatePath } from "next/cache"
 import type { z } from "zod"
 
 import { db } from "@/lib/db"
-import { type Bot, bots, insertBotSchema } from "@/lib/db/schema"
+import {
+  type Bot,
+  bots,
+  type Chat,
+  chatMembers,
+  chats,
+  insertBotSchema,
+} from "@/lib/db/schema"
 
 export type CreateBotInput = z.input<typeof insertBotSchema>
 
 export type CreateBotResult =
-  | { success: true; bot: Bot }
+  | { success: true; bot: Bot; chat: Chat }
   | { success: false; error: string }
 
 export async function createBot(
@@ -27,16 +34,29 @@ export async function createBot(
     }
   }
 
-  const [bot] = await db
-    .insert(bots)
-    .values({
-      ...parsed.data,
-      instructions: parsed.data.instructions || null,
-      userId,
-    })
-    .returning()
+  // Every bot starts with a direct chat. All three rows land together or
+  // not at all.
+  const { bot, chat } = await db.transaction(async (tx) => {
+    const [bot] = await tx
+      .insert(bots)
+      .values({
+        ...parsed.data,
+        instructions: parsed.data.instructions || null,
+        userId,
+      })
+      .returning()
+
+    const [chat] = await tx
+      .insert(chats)
+      .values({ userId, kind: "direct" })
+      .returning()
+
+    await tx.insert(chatMembers).values({ chatId: chat.id, botId: bot.id })
+
+    return { bot, chat }
+  })
 
   revalidatePath("/")
 
-  return { success: true, bot }
+  return { success: true, bot, chat }
 }
